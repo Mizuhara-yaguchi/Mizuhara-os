@@ -26,6 +26,11 @@
 //! - `#![feature(panic_info_message)]`
 //!   panic! 时，获取其中的信息并打印
 #![feature(panic_info_message)]
+//!
+//! - `#![feature(alloc_error_handler)]`
+//!   我们使用了一个全局动态内存分配器，以实现原本标准库中的堆内存分配。
+//!   而语言要求我们同时实现一个错误回调，这里我们直接 panic
+#![feature(alloc_error_handler)]
 
 #[macro_use]
 mod console;
@@ -35,6 +40,13 @@ mod panic;
 mod sbi;
 
 extern crate alloc;
+mod memory;
+mod interrupt;
+
+extern crate alloc;
+
+use crate::sbi::*;
+
 
 // 汇编编写的程序入口，具体见该文件
 global_asm!(include_str!("entry.asm"));
@@ -78,4 +90,18 @@ pub extern "C" fn rust_main() {
     }
 
     panic!("end of rust_main");
+
+    let mut vec = Vec::new();
+    for i in 0..10000 {
+        vec.push(i);
+    }
+    assert_eq!(vec.len(), 10000);
+    for (i, value) in vec.into_iter().enumerate() {
+        assert_eq!(value, i);
+    }
+    println!("Mizuhara heap test passed");
+
+    println!("shutdown!");
+    sbi::shutdown();
+    //panic!()
 }
